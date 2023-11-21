@@ -1,0 +1,126 @@
+---
+title: "STAT570-HW2"
+format: pdf
+editor: visual
+author: 
+  - Oğuzhan Aydın
+---
+
+```{r}
+library(tidyverse) 
+library(dplyr) 
+library(nycflights13) 
+make_datetime_100 <- function(year, month, day, time) {
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+  } 
+flights_dt <- flights |>
+  filter(!is.na(dep_time), !is.na(arr_time)) |>
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+    ) |>    
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+flights_dt2 <- flights_dt
+```
+
+## 17.2.4 **From other types**
+
+By writing the following codes, we can get today's date and the exact time for now.
+
+```{r}
+today() 
+now()
+```
+
+Additionally, by changing the time zone, we can reach the current time or specific time in any part of the world.
+
+```{r}
+as_datetime(now(), tz="UTC") 
+as_datetime(now(), tz="Europe/Istanbul") 
+as_datetime(now(), tz="Europe/Paris") 
+as.POSIXct(now(), tz = "CET") 
+as.POSIXct(now(), tz = "UTC") 
+as.POSIXct(now(), tz = "Europe/Istanbul") 
+as.POSIXct(now(), tz = "America/New_York") 
+as.POSIXct(now(), tz = "Europe/Madrid")
+```
+
+By using some mathematical operators, we can find out how many seconds later we will be at a certain time.
+
+If we do not enter a specific date, it takes the start date as January 1, 1970.
+
+```{r}
+as_datetime(1) 
+as_datetime(60*60*60) 
+as_datetime(600000000) #Saniye bazında değişiyor. now() + 60*60 
+```
+
+Or, we can do it in a day basis.
+
+```{r}
+as_date(1) #Gün değişiyor as_date(19681)
+as_date(366)
+```
+
+If we want, we can calculate how many days have been passed between specific two dates.
+
+```{r}
+now()- as_datetime("2000-08-25 00:00:00")
+```
+
+## Date-Time Components
+
+With various functions, it can be easily reached the year, month, day and even minutes of a time or a day.
+
+```{r}
+datetime <- ymd_hms(now()) 
+year(datetime) 
+month(datetime) 
+day(datetime) 
+minute(datetime) 
+second(datetime)
+```
+
+By using following codes, we can find out what day of the year, month or week it is.
+
+```{r}
+yday(datetime)  
+mday(datetime) 
+wday(datetime) 
+```
+
+A leap year is a calendar year that contains an additional day compared to a common year. We can find out which years are the leap years.
+
+```{r}
+leap_year(2020:2024)
+```
+
+The function that provides an automatic answer for those who do not know how many days are in a month:
+
+```{r}
+days_in_month(1:12)
+```
+
+***Question:** How does the average departure delay vary over different months for morning (AM) and afternoon/evening (PM) flights?*
+
+```{r}
+flights_dt2 <- flights_dt2 %>%
+  mutate(am = am(dep_time),
+         pm = pm(dep_time),
+         month = months(dep_time, abbreviate = TRUE))
+
+average_delay <- flights_dt2 %>%
+  group_by(month, period = ifelse(am, "AM", "PM")) %>%
+  summarise(avg_dep_delay = mean(dep_delay, na.rm = TRUE))
+
+ggplot(average_delay, aes(x = month, y = avg_dep_delay, group = period, color = period)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Average Departure Delay by Month and Period",
+       x = "Month",
+       y = "Average Departure Delay",
+       color = "Period") +
+  theme_minimal() 
+```
